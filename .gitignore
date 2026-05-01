@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local environment files (never commit credentials)
+.env
+.env.*
+
+# Playwright runtime artifacts
+.playwright-mcp/
+playwright-report/
+test-results/
+playwright/.cache/
+
+# One-shot exploration / DOM-probing scripts used during development.
+# These read live sessions from ~/.config/nepal-wallet-cli/ and are not
+# part of the published CLI. Kept local for reference only.
+/scripts/probe-*
+/scripts/explore-*
+/scripts/dump-*
+/scripts/capture-khalti-*
+/scripts/khalti-*.md
+/scripts/khalti-*.log
+
+# Local exports (CSV history exports default to CWD)
+*.csv
+
+# Claude Code project-local config (keep settings, ignore local overrides)
+.claude/settings.local.json
+
+# Project planning notes (kept local)
+/plan/

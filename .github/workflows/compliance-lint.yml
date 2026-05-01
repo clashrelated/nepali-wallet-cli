@@ -1,0 +1,100 @@
+name: Compliance Lint
+
+# Enforces the rules described in AGENTS.md, DISCLAIMER.md, and the
+# README "Compliance posture" section. Runs on every PR to main.
+#
+# Failures here are not arbitrary CI gates — they reflect the published
+# scope of the project. If a check needs to change, update AGENTS.md
+# first in a standalone PR with the `compliance-review` label, then
+# adjust the workflow in a follow-up.
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ── §6: telemetry / analytics dependencies ──────────────────────────
+      - name: Forbidden runtime dependencies
+        run: |
+          set -e
+          # If any of these strings appear as a dependency name in package.json,
+          # the PR has introduced telemetry, analytics, or fraud-evasion tooling.
+          forbidden='"(posthog|posthog-js|posthog-node|mixpanel|mixpanel-browser|@sentry/|@datadog/|datadog-metrics|amplitude|@amplitude/|segment-analytics|@segment/|honeycomb|@vercel/analytics|fathom-client|plausible-tracker|2captcha|@2captcha/|anti-captcha|nopecha|capsolver|puppeteer-extra-plugin-recaptcha|puppeteer-extra-plugin-anonymize-ua|puppeteer-extra-plugin-adblocker)"'
+          if grep -E "$forbidden" package.json > /dev/null 2>&1; then
+            echo "::error file=package.json::Forbidden dependency detected (telemetry, analytics, or detection-evasion). See AGENTS.md §4 / §6."
+            grep -nE "$forbidden" package.json
+            exit 1
+          fi
+
+      # ── §5: network egress targets outside the public eSewa/Khalti UIs ──
+      - name: Disallowed network egress targets
+        run: |
+          set -e
+          # Allowlist: esewa.com.np (and subdomains), khalti.com (and subdomains),
+          # plus localhost/loopback. Anything else in src/ is suspect.
+          if grep -rEn "https?://[a-zA-Z0-9.-]+" src/ --include="*.js" --include="*.mjs" \
+             | grep -vE "https?://(([a-zA-Z0-9-]+\.)*esewa\.com\.np|([a-zA-Z0-9-]+\.)*khalti\.com|localhost|127\.0\.0\.1)" \
+             | grep -vE "^[^:]+:[0-9]+:\s*//" ; then
+            echo "::error::Network egress to a host outside esewa.com.np / khalti.com. See AGENTS.md §5 (private/external APIs)."
+            exit 1
+          fi
+
+      # ── §2: bulk-operation primitives in command files ─────────────────
+      - name: Bulk-loop signatures in transactional commands
+        run: |
+          set -e
+          # In the four single-transaction command files, any iteration over
+          # a collection of recipients/numbers/bills/accounts is suspicious.
+          targets='src/commands/send.js src/commands/topup.js src/commands/bill.js src/commands/bank-transfer.js src/core/send.js src/core/topup.js src/core/bank-transfer.js'
+          if grep -nE '(recipients|numbers|bills|accounts|targets|destinations)\s*[:=]\s*\[|\.(forEach|map|reduce)\s*\(.*(recipient|number|bill|account|target|destination)|for\s*\(.*\b(recipients|numbers|bills|accounts|targets|destinations)\b' $targets 2>/dev/null; then
+            echo "::error::Possible bulk-operation primitive in a single-transaction file. See AGENTS.md §2 (bulk operations)."
+            exit 1
+          fi
+
+      # ── §8: compliance-file edits gated by explicit label ──────────────
+      - name: Compliance file changes require the `compliance-review` label
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_REF: ${{ github.base_ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -e
+          changed=$(git diff --name-only "origin/${BASE_REF}...HEAD" -- \
+            AGENTS.md CLAUDE.md DISCLAIMER.md SECURITY.md LICENSE \
+            'docs/compliance/**' '.github/workflows/compliance-lint.yml' || true)
+          if [ -n "$changed" ]; then
+            echo "PR modifies compliance-tracked files:"
+            echo "$changed"
+            label=$(gh pr view "$PR_NUMBER" --json labels -q '.labels[].name' \
+              | grep -Fx 'compliance-review' || true)
+            if [ -z "$label" ]; then
+              echo "::error::Compliance-tracked files changed without the 'compliance-review' label. See AGENTS.md ('How to apply the rules')."
+              echo "::error::A maintainer must review the change explicitly and add the label before this can merge."
+              exit 1
+            fi
+            echo "::notice::compliance-review label present — change permitted."
+          fi
+
+      # ── presence check ──────────────────────────────────────────────────
+      - name: Required compliance files exist
+        run: |
+          set -e
+          missing=""
+          for f in AGENTS.md CLAUDE.md DISCLAIMER.md SECURITY.md LICENSE README.md; do
+            [ -f "$f" ] || missing="$missing $f"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Required compliance files missing:$missing"
+            exit 1
+          fi
+          if ! ls docs/compliance/*.png > /dev/null 2>&1; then
+            echo "::error::docs/compliance/ has no ToS snapshots. The README compliance section must be backed by dated screenshots."
+            exit 1
+          fi

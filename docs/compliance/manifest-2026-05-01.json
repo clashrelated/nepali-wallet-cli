@@ -1,0 +1,34 @@
+[
+  {
+    "slug": "esewa-terms",
+    "url": "https://blog.esewa.com.np/terms-and-conditions",
+    "file": "esewa-terms-2026-05-01.png",
+    "capturedAt": "2026-05-01T17:05:30.058Z",
+    "httpStatus": 200,
+    "finalUrl": "https://blog.esewa.com.np/terms-and-conditions"
+  },
+  {
+    "slug": "esewa-privacy",
+    "url": "https://blog.esewa.com.np/privacy-policy",
+    "file": "esewa-privacy-2026-05-01.png",
+    "capturedAt": "2026-05-01T17:05:34.444Z",
+    "httpStatus": 200,
+    "finalUrl": "https://blog.esewa.com.np/privacy-policy"
+  },
+  {
+    "slug": "khalti-terms",
+    "url": "https://khalti.com/info/terms/",
+    "file": "khalti-terms-2026-05-01.png",
+    "capturedAt": "2026-05-01T17:05:42.510Z",
+    "httpStatus": 200,
+    "finalUrl": "https://khalti.com/info/terms/"
+  },
+  {
+    "slug": "khalti-privacy",
+    "url": "https://khalti.com/info/privacy-policy/",
+    "file": "khalti-privacy-2026-05-01.png",
+    "capturedAt": "2026-05-01T17:05:47.670Z",
+    "httpStatus": 200,
+    "finalUrl": "https://khalti.com/info/privacy-policy/"
+  }
+]
